@@ -124,3 +124,10 @@ variable "ebs_controller_service_account" {
   type        = string
   default     = "ebs-csi-controller-sa"
 }
+
+# Github
+variable "github_repository" {
+  description = "GitHub repository (owner/name) whose main branch may push images to ECR"
+  type        = string
+  default     = "jesuismarie/user-crud-app"
+}

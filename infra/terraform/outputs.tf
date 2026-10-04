@@ -42,3 +42,8 @@ output "ecr_repository_url" {
   description = "ECR repository URL for the app image, used by CI to push and by the Helm chart as image.repository"
   value       = aws_ecr_repository.container_registry.repository_url
 }
+
+output "github_actions_role_arn" {
+  description = "IAM role ARN that GitHub Actions assumes to push images to ECR"
+  value       = aws_iam_role.github_actions.arn
+}
