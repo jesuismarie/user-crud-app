@@ -8,6 +8,8 @@
 *.crt
 *.csv
 .env
+.env.*
+!.env.example
 .aws/
 kubeconfig
 kubeconfig.*
