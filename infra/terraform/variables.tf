@@ -126,8 +126,8 @@ variable "ebs_controller_service_account" {
 }
 
 # Github
-variable "github_repository" {
-  description = "GitHub repository (owner/name) whose main branch may push images to ECR"
+variable "github_subject" {
+  description = "OIDC subject GitHub sends for runs on main (the CI debug step prints it)"
   type        = string
-  default     = "jesuismarie/user-crud-app"
+  default     = "repo:jesuismarie@94791257/user-crud-app@1385281605:ref:refs/heads/main"
 }
