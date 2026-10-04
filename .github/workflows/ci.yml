@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - "charts/**"
+  pull_request:
+    paths:
+      - "app/**"
+      - "charts/**"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: app/backend/requirements*.txt
+
+      - name: Install dependencies
+        working-directory: app/backend
+        run: pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Run tests
+        working-directory: app/backend
+        run: pytest
+
+      - name: Check dependencies for known vulnerabilities
+        working-directory: app/backend
+        run: |
+          pip install pip-audit
+          pip-audit -r requirements.txt
