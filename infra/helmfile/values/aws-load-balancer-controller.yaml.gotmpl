@@ -1,0 +1,17 @@
+replicaCount: 1
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+clusterName: {{ .Values.clusterName | quote }}
+region: {{ .Values.region | quote }}
+vpcId: {{ .Values.vpcId | quote }}
+serviceAccount:
+  create: true
+  name: aws-load-balancer-controller
+  annotations:
+    eks.amazonaws.com/role-arn: {{ .Values.albController.roleArn | quote }}
