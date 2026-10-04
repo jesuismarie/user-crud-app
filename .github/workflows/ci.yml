@@ -75,3 +75,37 @@ jobs:
           tags: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ steps.meta.outputs.tag }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  update-live-env:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    concurrency:
+      group: update-live-env
+      cancel-in-progress: false
+    env:
+      IMAGE_REPOSITORY: ${{ needs.build-and-push.outputs.image_repository }}
+      IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+    steps:
+      - name: Check out live-environments
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.LIVE_ENV_REPOSITORY }}
+          ssh-key: ${{ secrets.LIVE_ENV_DEPLOY_KEY }}
+          path: live-environments
+
+      - name: Write the new image into the values file
+        working-directory: live-environments
+        run: |
+          yq -i '.image.repository = strenv(IMAGE_REPOSITORY) | .image.tag = strenv(IMAGE_TAG)' \
+            apps/user-crud-app/values-dev.yaml
+
+      - name: Commit and push
+        working-directory: live-environments
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/user-crud-app/values-dev.yaml
+          git diff --cached --quiet && echo "Nothing changed" && exit 0
+          git commit -m "chore: deploy user-crud-app ${IMAGE_TAG}"
+          git pull --rebase origin main
+          git push origin HEAD:main
