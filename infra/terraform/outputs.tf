@@ -37,3 +37,8 @@ output "ebs_csi_role_arn" {
   description = "IAM role ARN for the EBS CSI driver ServiceAccount annotation"
   value       = module.ebs_csi_irsa.role_arn
 }
+
+output "ecr_repository_url" {
+  description = "ECR repository URL for the app image, used by CI to push and by the Helm chart as image.repository"
+  value       = aws_ecr_repository.container_registry.repository_url
+}
