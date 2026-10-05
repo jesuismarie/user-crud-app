@@ -6,11 +6,9 @@ on:
     branches: [main]
     paths:
       - "app/**"
-      - "charts/**"
   pull_request:
     paths:
       - "app/**"
-      - "charts/**"
 
 jobs:
   test:
@@ -99,15 +97,15 @@ jobs:
       - name: Write the new image into the values file
         working-directory: live-environments
         run: |
-          yq -i '.image.repository = strenv(IMAGE_REPOSITORY) | .image.tag = strenv(IMAGE_TAG)' \
-            apps/user-crud-app/values-dev.yaml
+          yq -i '.appImage.repository = strenv(IMAGE_REPOSITORY) | .appImage.tag = strenv(IMAGE_TAG)' \
+            aws/dev/user-crud-app/values.yaml
 
       - name: Commit and push
         working-directory: live-environments
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/user-crud-app/values-dev.yaml
+          git add aws/dev/user-crud-app/values.yaml
           git diff --cached --quiet && echo "Nothing changed" && exit 0
           git commit -m "chore: deploy user-crud-app ${IMAGE_TAG}"
           git pull --rebase origin main
