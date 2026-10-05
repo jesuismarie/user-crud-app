@@ -78,6 +78,16 @@ resource "aws_security_group_rule" "worker_node_ingress_http_from_vpc" {
   description       = "NLB to ingress-nginx pods"
 }
 
+resource "aws_security_group_rule" "worker_node_ingress_https_from_vpc" {
+  type              = "ingress"
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  cidr_blocks       = [var.vpc_cidr]
+  security_group_id = aws_security_group.eks_nodes_sg.id
+  description       = "NLB to ingress-nginx pods (HTTPS)"
+}
+
 resource "aws_security_group_rule" "worker_node_to_worker_node_ingress_coredns_tcp" {
   type              = "ingress"
   from_port         = 53
