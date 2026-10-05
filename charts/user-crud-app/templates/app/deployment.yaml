@@ -1,26 +1,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: user-crud-app
+  name: {{ .Values.app.name }}
 spec:
   replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: user-crud-app
+      app: {{ .Values.app.name }}
   template:
     metadata:
       labels:
-        app: user-crud-app
+        app: {{ .Values.app.name }}
     spec:
       containers:
         - name: app
-          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          image: "{{ .Values.appImage.repository }}:{{ .Values.appImage.tag }}"
+          imagePullPolicy: {{ .Values.appImage.pullPolicy }}
           ports:
-            - containerPort: 5000
+            - containerPort: {{ .Values.service.targetPort }}
           envFrom:
             - configMapRef:
-                name: user-crud-app
+                name: {{ .Values.app.name }}-cm
           env:
             - name: DB_PASSWORD
               valueFrom:
@@ -33,16 +33,8 @@ spec:
                   name: {{ .Values.existingSecret }}
                   key: SECRET_KEY
           livenessProbe:
-            httpGet:
-              path: /api/health
-              port: 5000
+            {{- toYaml .Values.livenessProbe | nindent 12 }}
           readinessProbe:
-            httpGet:
-              path: /api/ready
-              port: 5000
+            {{- toYaml .Values.readinessProbe | nindent 12 }}
           resources:
-            requests:
-              cpu: 100m
-              memory: 192Mi
-            limits:
-              memory: 512Mi
+            {{- toYaml .Values.app.resources | nindent 12 }}

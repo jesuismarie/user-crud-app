@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: mysql
+  name: {{ .Values.db.name }}
 spec:
-  serviceName: mysql
+  serviceName: {{ .Values.db.name }}
   replicas: 1
   selector:
     matchLabels:
-      app: mysql
+      app: {{ .Values.db.name }}
   template:
     metadata:
       labels:
-        app: mysql
+        app: {{ .Values.db.name }}
     spec:
       containers:
         - name: mysql
-          image: mysql:8.4
+          image: "{{ .Values.dbImage.repository }}:{{ .Values.dbImage.tag }}"
           ports:
-            - containerPort: 3306
+            - containerPort: {{ .Values.config.dbPort }}
           env:
             - name: MYSQL_ROOT_PASSWORD
               valueFrom:
@@ -44,4 +44,4 @@ spec:
         accessModes: ["ReadWriteOnce"]
         resources:
           requests:
-            storage: 5Gi
+            storage: {{ .Values.db.storage }}
