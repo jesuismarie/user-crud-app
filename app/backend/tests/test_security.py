@@ -2,7 +2,7 @@
 import pytest
 
 
-@pytest.mark.parametrize("path", ["/", "/app.js", "/api/health", "/api/users", "/api/nothing", "/nope.css"])
+@pytest.mark.parametrize("path", ["/api/health", "/api/users", "/api/nothing", "/nope.css"])
 def test_security_headers_present(client, path):
 	res = client.get(path)
 	assert res.headers["X-Content-Type-Options"] == "nosniff"
@@ -13,6 +13,6 @@ def test_security_headers_present(client, path):
 
 
 def test_cors_is_not_enabled(client):
-	# One image = same origin, so no site should be allowed to call the API
+	# Frontend and API share one domain (ingress routes /api), so CORS stays off
 	res = client.get("/api/health", headers={"Origin": "https://evil.example"})
 	assert "Access-Control-Allow-Origin" not in res.headers

@@ -5,7 +5,6 @@ from app import create_app, db
 
 class TestingConfig:
 	"""In-memory SQLite. No MySQL and no .env required."""
-	FRONTEND_DIR = None
 	TESTING = True
 	PROPAGATE_EXCEPTIONS = False
 	SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
@@ -17,16 +16,9 @@ class TestingConfig:
 
 @pytest.fixture
 def app(tmp_path):
-	frontend = tmp_path / "frontend"
-	frontend.mkdir()
-	(frontend / "index.html").write_text("<h1>test page</h1>")
-	(frontend / "app.js").write_text("console.log('test');")
 	(tmp_path / "secret.txt").write_text("outside")
 
-	class _Config(TestingConfig):
-		FRONTEND_DIR = str(frontend)
-
-	application = create_app(_Config)
+	application = create_app(TestingConfig)
 	yield application
 	with application.app_context():
 		db.session.remove()

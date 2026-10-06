@@ -242,19 +242,7 @@ def test_wrong_method_returns_json_405(client):
 	assert res.is_json
 
 
-# --- frontend is served by Flask ---
-
-def test_index_page_is_served(client):
-	res = client.get("/")
-	assert res.status_code == 200
-	assert b"test page" in res.data
-
-
-def test_frontend_file_is_served(client):
-	res = client.get("/app.js")
-	assert res.status_code == 200
-	assert b"console.log" in res.data
-
+# --- unknown paths and traversal ---
 
 def test_missing_frontend_file_returns_json_404(client):
 	res = client.get("/nope.css")
