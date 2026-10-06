@@ -1,6 +1,6 @@
 import time
 from sqlalchemy.exc import OperationalError
-from flask import Flask, send_from_directory
+from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
@@ -31,14 +31,6 @@ def create_app(config_class=None):
 
 	from .routes import api_bp
 	app.register_blueprint(api_bp)
-
-	@app.route("/")
-	def index():
-		return send_from_directory(app.config["FRONTEND_DIR"], "index.html")
-
-	@app.route("/<path:filename>")
-	def frontend_files(filename):
-		return send_from_directory(app.config["FRONTEND_DIR"], filename)
 
 	@app.after_request
 	def add_security_headers(response):

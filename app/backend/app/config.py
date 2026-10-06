@@ -31,4 +31,3 @@ class Config:
 	DB_CONNECT_RETRIES = int(os.getenv("DB_CONNECT_RETRIES", "30"))
 	DB_CONNECT_DELAY = float(os.getenv("DB_CONNECT_DELAY", "2"))
 	SECRET_KEY = _require_env("SECRET_KEY")
-	FRONTEND_DIR = os.path.abspath(os.getenv("FRONTEND_DIR", "/app/frontend"))

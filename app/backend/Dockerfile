@@ -6,11 +6,10 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 RUN useradd --create-home --uid 10001 appuser
 
-COPY --chown=10001:10001 ./backend/requirements.txt .
+COPY --chown=10001:10001 requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY --chown=10001:10001 ./backend/app/ ./app
-COPY --chown=10001:10001 ./frontend/ ./frontend
+COPY --chown=10001:10001 app/ ./app
 
 USER 10001
 
