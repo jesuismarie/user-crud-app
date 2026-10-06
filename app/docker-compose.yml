@@ -10,6 +10,8 @@ services:
       MYSQL_PASSWORD: ${DB_PASSWORD}
     volumes:
       - mysql_data:/var/lib/mysql
+    networks:
+      - isolated
     healthcheck:
       test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p\"$$MYSQL_ROOT_PASSWORD\""]
       interval: 5s
@@ -18,8 +20,8 @@ services:
 
   backend:
     build:
-      context: .
-      dockerfile: backend/Dockerfile
+      context: backend
+      dockerfile: Dockerfile
     container_name: user-crud-backend
     restart: unless-stopped
     environment:
@@ -29,11 +31,45 @@ services:
       DB_USER: ${DB_USER}
       DB_PASSWORD: ${DB_PASSWORD}
       SECRET_KEY: ${SECRET_KEY}
-    ports:
-      - "5000:5000"
+    networks:
+      - isolated
+      - public
+    expose:
+      - "5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/api/health')"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
     depends_on:
       db:
         condition: service_healthy
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    container_name: user-crud-frontend
+    restart: unless-stopped
+    environment:
+      BACKEND_HOST: backend
+    networks:
+      - public
+    ports:
+      - 8080:8080
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8080/ >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+    depends_on:
+     backend:
+       condition: service_healthy
+
+networks:
+  isolated:
+    internal: true
+  public:
 
 volumes:
   mysql_data:
