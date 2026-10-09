@@ -7,15 +7,17 @@ spec:
   replicas: 1
   selector:
     matchLabels:
-      app: {{ .Values.db.name }}
+      app.kubernetes.io/name: {{ .Values.app.name }}
+      app.kubernetes.io/component: {{ .Values.db.component }}
   template:
     metadata:
       labels:
-        app: {{ .Values.db.name }}
+        app.kubernetes.io/name: {{ .Values.app.name }}
+        app.kubernetes.io/component: {{ .Values.db.component }}
     spec:
       containers:
         - name: mysql
-          image: "{{ .Values.dbImage.repository }}:{{ .Values.dbImage.tag }}"
+          image: "{{ .Values.db.image.repository }}:{{ .Values.db.image.tag }}"
           ports:
             - containerPort: {{ .Values.config.dbPort }}
           env:
@@ -37,6 +39,8 @@ spec:
             - name: data
               mountPath: /var/lib/mysql
               subPath: mysql
+          resources:
+              {{- toYaml .Values.db.resources | nindent 12 }}
   volumeClaimTemplates:
     - metadata:
         name: data

@@ -5,6 +5,7 @@ metadata:
 spec:
   clusterIP: None
   selector:
-    app: {{ .Values.db.name }}
+    app.kubernetes.io/name: {{ .Values.app.name }}
+    app.kubernetes.io/component: {{ .Values.db.component }}
   ports:
     - port: {{ .Values.config.dbPort }}
