@@ -1,0 +1,25 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ .Values.app.name }}-gateway
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Values.gateway.clusterIssuer }}
+spec:
+  gatewayClassName: {{ .Values.gateway.className }}
+  infrastructure:
+    annotations:
+      {{- toYaml .Values.gateway.annotations | nindent 6 }}
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: {{ .Values.gateway.httpPort }}
+    {{- range .Values.gateway.hosts }}
+    - name: https-{{ . | replace "." "-" }}
+      protocol: HTTPS
+      port: {{ $.Values.gateway.httpsPort }}
+      hostname: {{ . | quote }}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: {{ . | replace "." "-" }}-tls
+    {{- end }}
