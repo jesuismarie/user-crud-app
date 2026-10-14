@@ -1,5 +1,24 @@
 app:
   name: user-crud-app
+
+existingSecret: user-crud-secrets
+
+backend:
+  component: backend
+  replicas: 2
+  image:
+    repository: user-crud-app
+    tag: "backend-1.0.0"
+    pullPolicy: IfNotPresent
+  port: &backendPort 5000
+  livenessProbe:
+    httpGet:
+      path: /api/health
+      port: *backendPort
+  readinessProbe:
+    httpGet:
+      path: /api/ready
+      port: *backendPort
   resources:
     requests:
       cpu: 100m
@@ -7,45 +26,57 @@ app:
     limits:
       memory: 512Mi
 
-replicaCount: 2
-
-existingSecret: user-crud-secrets
-
-appImage:
-  repository: user-crud-app
-  tag: "1.0.0"
-  pullPolicy: IfNotPresent
-
-livenessProbe:
-  httpGet:
-    path: /api/health
-    port: 5000
-
-readinessProbe:
-  httpGet:
-    path: /api/ready
-    port: 5000
-
-dbImage:
-  repository: mysql
-  tag: "8.4"
+frontend:
+  component: frontend
+  replicas: 2
+  image:
+    repository: user-crud-app
+    tag: "frontend-1.0.0"
+    pullPolicy: IfNotPresent
+  port: &frontendPort 8080
+  readinessProbe:
+    httpGet:
+      path: /
+      port: *frontendPort
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      memory: 128Mi
 
 db:
   name: mysql
+  component: db
+  image:
+    repository: mysql
+    tag: "8.4"
   storage: 5Gi
-
-service:
-  port: 5000
-  targetPort: 5000
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 1Gi
 
 config:
   dbPort: 3306
   dbName: cruddb
   dbUser: cruduser
 
-ingress:
+gateway:
   className: nginx
-  path: /
-  host: crud.test.com
   clusterIssuer: selfsigned
-  tlsSecretName: user-crud-tls
+  httpPort: 80
+  httpsPort: 443
+  hosts:
+    - crud.example.com
+  routes:
+    - path: /api
+      service: backend
+    - path: /
+      service: frontend
+  annotations:
+    service.beta.kubernetes.io/aws-load-balancer-type: external
+    service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
+    service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
