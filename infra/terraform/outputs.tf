@@ -47,3 +47,14 @@ output "github_actions_role_arn" {
   description = "IAM role ARN that GitHub Actions assumes to push images to ECR"
   value       = aws_iam_role.github_actions.arn
 }
+
+# Helm Chart
+output "helm_charts_bucket" {
+  description = "S3 bucket used as the Helm chart repository"
+  value       = aws_s3_bucket.helm_charts.bucket
+}
+
+output "helm_charts_url" {
+  description = "HTTPS URL of the Helm chart repository"
+  value       = "https://${aws_s3_bucket.helm_charts.bucket}.s3.${var.aws_region}.amazonaws.com/charts"
+}

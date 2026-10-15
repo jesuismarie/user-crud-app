@@ -41,7 +41,7 @@ data "aws_iam_policy_document" "github_actions_ecr" {
     resources = ["*"]
   }
 
-    statement {
+  statement {
     sid = "EcrPush"
     actions = [
       "ecr:BatchCheckLayerAvailability",
