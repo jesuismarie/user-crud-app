@@ -1,6 +1,10 @@
 crds:
   enabled: true
 
+config:
+  gatewayAPI:
+    enabled: true
+
 replicaCount: 1
 resources:
   requests:

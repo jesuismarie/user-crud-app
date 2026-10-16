@@ -12,8 +12,9 @@ repositories:
     url: https://kubernetes-sigs.github.io/metrics-server/
   - name: jetstack
     url: https://charts.jetstack.io
-  - name: ingress-nginx
-    url: https://kubernetes.github.io/ingress-nginx
+  - name: gateway-nginx
+    url: ghcr.io/nginx/charts
+    oci: true
   - name: argo
     url: https://argoproj.github.io/argo-helm
 
@@ -31,19 +32,30 @@ releases:
     chart: jetstack/cert-manager
     wait: true
     version: "v1.21.2"
+    needs:
+      - nginx-gateway/nginx-gateway-fabric
     values:
       - values/cert-manager.yaml
 
-  - name: ingress-nginx
-    namespace: ingress-nginx
+  - name: nginx-gateway-fabric
+    namespace: nginx-gateway
     createNamespace: true
-    chart: ingress-nginx/ingress-nginx
+    chart: gateway-nginx/nginx-gateway-fabric
     wait: true
-    version: "4.15.1"
+    version: "2.7.2"
     needs:
       - kube-system/aws-load-balancer-controller
     values:
-      - values/ingress-nginx.yaml
+      - values/nginx-gateway-fabric.yaml
+    hooks:
+      - events: ["presync"]
+        showlogs: true
+        command: kubectl
+        args:
+          - apply
+          - --server-side
+          - -f
+          - https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.6.2/standard-install.yaml
 
   - name: aws-load-balancer-controller
     namespace: kube-system
