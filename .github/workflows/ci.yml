@@ -6,9 +6,11 @@ on:
     branches: [main]
     paths:
       - "app/**"
+      - "charts/**"
   pull_request:
     paths:
       - "app/**"
+      - "charts/**"
 
 jobs:
   test:
@@ -36,6 +38,42 @@ jobs:
           pip install pip-audit
           pip-audit -r requirements.txt
 
+  publish-chart:
+    needs: test
+    if: |
+      (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
+      github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+    outputs:
+      chart_version: ${{ steps.chart.outputs.version }}
+      chart_repository: ${{ steps.chart.outputs.repository }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get temporary AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Package the chart and upload it to S3
+        id: chart
+        env:
+          BUCKET: ${{ vars.HELM_CHARTS_BUCKET }}
+          REGION: ${{ vars.AWS_REGION }}
+        run: |
+          CHARTS_URL="https://${BUCKET}.s3.${REGION}.amazonaws.com/charts"
+          mkdir repo
+          aws s3 sync "s3://${BUCKET}/charts" repo
+          helm package charts/user-crud-app -d repo
+          helm repo index repo --url "$CHARTS_URL"
+          aws s3 sync repo "s3://${BUCKET}/charts"
+          echo "version=$(yq '.version' charts/user-crud-app/Chart.yaml)" >> "$GITHUB_OUTPUT"
+          echo "repository=${CHARTS_URL}" >> "$GITHUB_OUTPUT"
+
   build-and-push:
     needs: test
     if: |
@@ -47,7 +85,8 @@ jobs:
       contents: read
     outputs:
       image_repository: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}
-      image_tag: ${{ steps.meta.outputs.tag }}
+      backend_tag: ${{ steps.meta.outputs.backend_tag }}
+      frontend_tag: ${{ steps.meta.outputs.frontend_tag }}
     steps:
       - uses: actions/checkout@v4
 
@@ -61,31 +100,46 @@ jobs:
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Make the image tag from the commit
+      - name: Make the image tags from the commit
         id: meta
-        run: echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "backend_tag=backend-sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          echo "frontend_tag=frontend-sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/setup-buildx-action@v3
 
-      - name: Build and push
+      - name: Build and push backend
         uses: docker/build-push-action@v6
         with:
-          context: app
+          context: app/backend
           file: app/backend/Dockerfile
           push: true
-          tags: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ steps.meta.outputs.tag }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ steps.meta.outputs.backend_tag }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+
+      - name: Build and push frontend
+        uses: docker/build-push-action@v6
+        with:
+          context: app/frontend
+          file: app/frontend/Dockerfile
+          push: true
+          tags: ${{ steps.ecr.outputs.registry }}/${{ vars.ECR_REPOSITORY }}:${{ steps.meta.outputs.frontend_tag }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
 
   update-live-env:
-    needs: build-and-push
+    needs: [publish-chart, build-and-push]
     runs-on: ubuntu-latest
     concurrency:
       group: update-live-env
       cancel-in-progress: false
     env:
       IMAGE_REPOSITORY: ${{ needs.build-and-push.outputs.image_repository }}
-      IMAGE_TAG: ${{ needs.build-and-push.outputs.image_tag }}
+      BACKEND_TAG: ${{ needs.build-and-push.outputs.backend_tag }}
+      FRONTEND_TAG: ${{ needs.build-and-push.outputs.frontend_tag }}
+      CHART_VERSION: ${{ needs.publish-chart.outputs.chart_version }}
+      CHART_REPOSITORY: ${{ needs.publish-chart.outputs.chart_repository }}
     steps:
       - name: Check out live-environments
         uses: actions/checkout@v4
@@ -94,19 +148,38 @@ jobs:
           ssh-key: ${{ secrets.LIVE_ENV_DEPLOY_KEY }}
           path: live-environments
 
+      - name: Write the chart location into Chart.yaml
+        working-directory: live-environments
+        run: |
+          yq -i '
+            .dependencies[0].version = strenv(CHART_VERSION) |
+            .dependencies[0].repository = strenv(CHART_REPOSITORY)
+          ' environments/dev/user-crud-app/Chart.yaml
+
       - name: Write the new image into the values file
         working-directory: live-environments
         run: |
-          yq -i '.appImage.repository = strenv(IMAGE_REPOSITORY) | .appImage.tag = strenv(IMAGE_TAG)' \
-            aws/dev/user-crud-app/values.yaml
+          yq -i '
+            .user-crud-app.backend.image.repository = strenv(IMAGE_REPOSITORY) |
+            .user-crud-app.backend.image.tag = strenv(BACKEND_TAG) |
+            .user-crud-app.frontend.image.repository = strenv(IMAGE_REPOSITORY) |
+            .user-crud-app.frontend.image.tag = strenv(FRONTEND_TAG)
+          ' environments/dev/user-crud-app/values.yaml
 
       - name: Commit and push
         working-directory: live-environments
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add aws/dev/user-crud-app/values.yaml
+          git add environments/dev/user-crud-app/Chart.yaml
+          git add environments/dev/user-crud-app/values.yaml
           git diff --cached --quiet && echo "Nothing changed" && exit 0
-          git commit -m "chore: deploy user-crud-app ${IMAGE_TAG}"
+          git commit \
+            -m "deploy(dev): user-crud-app ${GITHUB_SHA::7}" \
+            -m "backend:  ${BACKEND_TAG}
+          frontend: ${FRONTEND_TAG}
+          chart:    ${CHART_VERSION} (${CHART_REPOSITORY})
+          source:   ${GITHUB_REPOSITORY}@${GITHUB_SHA}
+          run:      ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
           git pull --rebase origin main
           git push origin HEAD:main
