@@ -35,6 +35,10 @@ spec:
               value: {{ .Values.config.dbName | quote }}
             - name: MYSQL_USER
               value: {{ .Values.config.dbUser | quote }}
+          livenessProbe:
+            {{- toYaml .Values.db.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.db.readinessProbe | nindent 12 }}
           volumeMounts:
             - name: data
               mountPath: /var/lib/mysql
