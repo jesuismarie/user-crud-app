@@ -2,5 +2,5 @@ apiVersion: v2
 name: user-crud-app
 description: Flask app (API and frontend) and MySQL for the user-crud-app on EKS
 type: application
-version: 0.1.0
+version: 0.1.1
 appVersion: "1.0.0"
